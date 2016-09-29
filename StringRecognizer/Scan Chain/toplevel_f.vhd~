@@ -1,0 +1,90 @@
+library ieee ;
+	use ieee.std_logic_1164.all ;
+	use ieee.numeric_std.all ;
+
+library work;
+	use work.ee214.all;
+
+entity toplevel_f is
+  port 
+  (
+	 TDI : in std_logic; -- Test Data In
+	 TDO : out std_logic; -- Test Data Out
+	 TMS : in std_logic; -- TAP controller signal
+	 TCLK : in std_logic; -- Test clock
+	 TRST : in std_logic -- Test reset
+  );
+end entity;
+
+architecture operation of toplevel_f is
+	  -- declare Scan-chain component.
+	  component Scan_Chain is
+	    generic (
+	    in_pins : integer; -- Number of input pins
+	    out_pins : integer -- Number of output pins
+	  );
+	  port (
+	         TDI : in std_logic; -- Test Data In
+	         TDO : out std_logic; -- Test Data Out
+	         TMS : in std_logic; -- TAP controller signal
+	         TCLK : in std_logic; -- Test clock
+	         TRST : in std_logic; -- Test reset
+	         dut_in : out std_logic_vector(in_pins-1 downto 0); -- Input for the DUT
+	         dut_out : in std_logic_vector(out_pins-1 downto 0) -- Output from the DUT
+	       );
+	  end component;
+  -- declare I/O signals to DUT component
+	signal op_code : std_logic_vector(1 downto 0);
+	signal A,B,Z : std_logic_vector(7 downto 0);
+
+  -- declare signals to Scan-chain component.
+  	signal scan_chain_parll_in : std_logic_vector(17 downto 0);
+  	signal scan_chain_parll_out : std_logic_vector(7 downto 0);
+
+ begin 
+ 	scan_instantiate : Scan_chain 
+ 		generic map (in_pins => 18, out_pins => 8)
+ 		port map 
+ 		(
+			TDI => TDI,
+            TDO => TDO,
+            TMS => TMS,
+            TCLK => TCLK,
+            TRST => TRST,
+            dut_in => scan_chain_parll_in,
+            dut_out => scan_chain_parll_out
+ 		);
+	
+	dut : ALU port map (a7 => A(7),
+			a6 => A(6),
+			a5 => A(5),	
+			a4 => A(4),	
+			a3 => A(3),	
+			a2 => A(2),	
+			a1 => A(1),	
+			a0 => A(0),	
+			b7 => B(7),	
+			b6 => B(6),	
+			b5 => B(5),	
+			b4 => B(4),	
+			b3 => B(3),	
+			b2 => B(2),	
+			b1 => B(1),	
+			b0 => B(0),	
+			in0 => op_code(0),
+			in1 => op_code(1),
+			y7 => Z(7),
+			y6 => Z(6),
+			y5 => Z(5),
+			y4 => Z(4),
+			y3 => Z(3),
+			y2 => Z(2),
+			y1 => Z(1),
+			y0 => Z(0));
+
+  -- connections between DUT and Scan_Chain
+  	op_code <= scan_chain_parll_in(17 downto 16);
+  	A <= scan_chain_parll_in (15 downto 8);
+  	B <= scan_chain_parll_in (7 downto 0);
+  	scan_chain_parll_out <= Z;
+end operation;
